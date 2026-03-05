@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle, Loader2, AlertCircle, Sparkles, Code, Briefcase, GraduationCap, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import { api } from '@/services/api';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,33 @@ export default function Home() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRef(useRouter()); // Stable router reference
+
+  // 3D Tilt effect states
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["15deg", "-15deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-15deg", "15deg"]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
 
   const processFile = async (file: File) => {
     if (file.type !== 'application/pdf') {
@@ -114,7 +141,7 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
                 style={{
-                  background: 'rgba(99, 102, 241, 0.1)',
+                  background: 'rgba(217, 70, 239, 0.1)',
                   color: 'var(--primary)',
                   padding: '8px 16px',
                   borderRadius: '20px',
@@ -122,7 +149,7 @@ export default function Home() {
                   fontWeight: '600',
                   marginBottom: '24px',
                   display: 'inline-block',
-                  border: '1px solid rgba(99, 102, 241, 0.2)'
+                  border: '1px solid rgba(217, 70, 239, 0.2)'
                 }}
               >
                 Powered by Gemini 1.5 Flash
@@ -130,9 +157,10 @@ export default function Home() {
               <h1 style={{ fontSize: '72px', marginBottom: '16px', lineHeight: 1.1 }}>
                 Smart AI Resume <br />
                 <span style={{
-                  background: 'linear-gradient(90deg, #6366f1, #10b981)',
+                  background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
                   WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
+                  WebkitTextFillColor: 'transparent',
+                  display: 'inline-block'
                 }}>Screening</span>
               </h1>
               <p style={{ fontSize: '20px', color: 'rgba(255, 255, 255, 0.5)', maxWidth: '650px', margin: '0 auto 60px' }}>
@@ -140,22 +168,28 @@ export default function Home() {
               </p>
 
               <motion.div
-                className="glass-card"
+                className="glass-card preserve-3d"
                 onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
+                onDragLeave={(e) => { onDragLeave(); handleMouseLeave(); }}
                 onDrop={onDrop}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
                 style={{
                   width: '100%',
                   maxWidth: '560px',
                   padding: '60px 40px',
                   position: 'relative',
                   border: `2px dashed ${isDragging ? 'var(--primary)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  background: isDragging ? 'rgba(99, 102, 241, 0.05)' : 'var(--surface)',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer'
+                  background: isDragging ? 'rgba(217, 70, 239, 0.05)' : 'var(--surface)',
+                  transition: 'border 0.3s ease, background 0.3s ease',
+                  cursor: 'pointer',
+                  rotateX,
+                  rotateY,
+                  transformStyle: "preserve-3d"
                 }}
                 onClick={() => fileInputRef.current?.click()}
-                whileHover={{ scale: 1.01 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <AnimatePresence mode="wait">
                   {!isUploading && (
@@ -164,21 +198,27 @@ export default function Home() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateZ(50px)' }}
                     >
-                      <div style={{
-                        width: '80px',
-                        height: '80px',
-                        borderRadius: '24px',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        marginBottom: '24px',
-                        border: '1px solid var(--border)'
-                      }}>
+                      <motion.div
+                        initial={{ y: 0 }}
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        style={{
+                          width: '80px',
+                          height: '80px',
+                          borderRadius: '24px',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginBottom: '24px',
+                          border: '1px solid var(--border)',
+                          boxShadow: '0 0 20px rgba(217, 70, 239, 0.2)'
+                        }}
+                      >
                         <Upload color={isDragging ? 'var(--primary)' : 'white'} size={32} />
-                      </div>
+                      </motion.div>
                       <h3 style={{ fontSize: '24px', marginBottom: '12px' }}>
                         {isDragging ? 'Drop it here' : 'Select Resume PDF'}
                       </h3>
@@ -217,7 +257,7 @@ export default function Home() {
                       key="loading"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateZ(50px)' }}
                     >
                       <div style={{ position: 'relative', marginBottom: '32px' }}>
                         <Loader2 size={64} color="var(--primary)" className="animate-spin" />

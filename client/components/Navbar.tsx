@@ -48,13 +48,13 @@ export default function Navbar() {
             top: 0,
             width: '100%',
             zIndex: 100,
-            background: 'rgba(5, 8, 16, 0.8)',
+            background: 'rgba(16, 5, 11, 0.8)',
             backdropFilter: 'blur(10px)',
             borderBottom: '1px solid var(--border)'
         }}>
             <Link href="/" style={{ textDecoration: 'none' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', background: 'linear-gradient(to right, #6366f1, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    AIVault
+                <div style={{ fontSize: '24px', fontWeight: 'bold', background: 'linear-gradient(to right, #f4f4f7ff, #db12ac96)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    CareerSphere
                 </div>
             </Link>
 

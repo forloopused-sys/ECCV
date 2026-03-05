@@ -2,54 +2,47 @@
 import { useState, useEffect } from 'react';
 
 import Navbar from '@/components/Navbar';
-import { api } from '@/services/api';
+import AuthService from '@/services/AuthService';
+import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, User as UserIcon, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export default function Register() {
-    const [formData, setFormData] = useState({ username: '', email: '', password: '', role: 'job_seeker' });
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        watch,
+        setValue
+    } = useForm({
+        defaultValues: { username: '', email: '', password: '', role: 'job_seeker' }
+    });
+
+    const currentRole = watch('role');
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
+    const onSubmit = async (data: any) => {
         setError(null);
         try {
-            const res = await api.post('/auth/register/', formData);
-            const data = await res.json();
-
-            if (res.ok) {
-                // Auto-login after registration
-                localStorage.setItem('access_token', data.access);
-                localStorage.setItem('refresh_token', data.refresh);
-                localStorage.setItem('user_role', data.role);
-
+            const result = await AuthService.register(data);
+            if (result.success) {
                 if (data.role === 'hr') {
                     router.push('/recruiter');
                 } else {
                     router.push('/profile');
                 }
-            } else {
-                // Handle validation errors
-                const errorMsg = data.username ? `Username: ${data.username[0]}` :
-                    data.email ? `Email: ${data.email[0]}` :
-                        data.password ? `Password: ${data.password[0]}` :
-                            "Registration failed. Please try again.";
-                setError(errorMsg);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError("Failed to connect to server. Please check if backend is running.");
-        } finally {
-            setLoading(false);
+            setError(err.message || "Failed to connect to server. Please check if backend is running.");
         }
     };
 
@@ -110,18 +103,18 @@ export default function Register() {
                         </motion.div>
                     )}
 
-                    <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}>
+                    <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit(onSubmit)}>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                             <button
                                 type="button"
-                                onClick={() => setFormData({ ...formData, role: 'job_seeker' })}
+                                onClick={() => setValue('role', 'job_seeker')}
                                 style={{
                                     flex: 1,
                                     padding: '12px',
                                     borderRadius: '12px',
                                     border: '1px solid var(--border)',
-                                    background: formData.role === 'job_seeker' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                    color: formData.role === 'job_seeker' ? 'var(--primary)' : 'rgba(255,255,255,0.4)',
+                                    background: currentRole === 'job_seeker' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                    color: currentRole === 'job_seeker' ? 'var(--primary)' : 'rgba(255,255,255,0.4)',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s ease'
                                 }}
@@ -130,14 +123,14 @@ export default function Register() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setFormData({ ...formData, role: 'hr' })}
+                                onClick={() => setValue('role', 'hr')}
                                 style={{
                                     flex: 1,
                                     padding: '12px',
                                     borderRadius: '12px',
                                     border: '1px solid var(--border)',
-                                    background: formData.role === 'hr' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                    color: formData.role === 'hr' ? 'var(--primary)' : 'rgba(255,255,255,0.4)',
+                                    background: currentRole === 'hr' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                    color: currentRole === 'hr' ? 'var(--primary)' : 'rgba(255,255,255,0.4)',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s ease'
                                 }}
@@ -153,11 +146,10 @@ export default function Register() {
                             <input
                                 type="text"
                                 placeholder="Username"
-                                value={formData.username}
-                                onChange={e => setFormData({ ...formData, username: e.target.value })}
+                                {...register("username", { required: "Username is required" })}
                                 style={{ paddingLeft: '48px', width: '100%' }}
-                                required
                             />
+                            {errors.username && <p style={{ color: 'var(--accent)', fontSize: '12px', marginTop: '4px' }}>{errors.username.message as string}</p>}
                         </div>
 
                         <div style={{ position: 'relative' }}>
@@ -167,11 +159,13 @@ export default function Register() {
                             <input
                                 type="email"
                                 placeholder="Email"
-                                value={formData.email}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                {...register("email", {
+                                    required: "Email is required",
+                                    pattern: { value: /^\S+@\S+$/i, message: "Invalid email" }
+                                })}
                                 style={{ paddingLeft: '48px', width: '100%' }}
-                                required
                             />
+                            {errors.email && <p style={{ color: 'var(--accent)', fontSize: '12px', marginTop: '4px' }}>{errors.email.message as string}</p>}
                         </div>
 
                         <div style={{ position: 'relative' }}>
@@ -181,16 +175,18 @@ export default function Register() {
                             <input
                                 type="password"
                                 placeholder="Password"
-                                value={formData.password}
-                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                {...register("password", {
+                                    required: "Password is required",
+                                    minLength: { value: 6, message: "Minimum 6 characters" }
+                                })}
                                 style={{ paddingLeft: '48px', width: '100%' }}
-                                required
                             />
+                            {errors.password && <p style={{ color: 'var(--accent)', fontSize: '12px', marginTop: '4px' }}>{errors.password.message as string}</p>}
                         </div>
 
 
-                        <button type="submit" className="btn-primary" style={{ height: '52px', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }} disabled={loading}>
-                            {loading ? <Loader2 className="animate-spin" size={20} /> : <>Register <ArrowRight size={18} /></>}
+                        <button type="submit" className="btn-primary" style={{ height: '52px', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }} disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <>Register <ArrowRight size={18} /></>}
                         </button>
                     </form>
 
